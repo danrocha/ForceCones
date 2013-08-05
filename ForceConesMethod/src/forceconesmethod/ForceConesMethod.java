@@ -64,7 +64,12 @@ public class ForceConesMethod extends PApplet {
 		sPos[0] = new PVector(300, 500, 0);
 		sPos[1] = new PVector(800, 500, 0);
 		sPos[2] = new PVector(0, 0, 0);
-
+		
+		
+		//DEFINE NODE TYPES
+		//0 = force application node
+		//1 = support node
+		//2 = intersectio node
 		nodeTypes = new int[totalNodes];
 		nodeTypes[0] = 1; // support
 		nodeTypes[1] = 1; // support
@@ -125,32 +130,34 @@ public class ForceConesMethod extends PApplet {
 		 * what to do in that case - not so important for the moment...)
 		 */
 
-		/*--------------------------------------------------------------------------
-		
 		Node[] sols = new Node[2];
-
+		
+		
 		for (int i = 0; i < 1; i++) {
-			for (int j = 0; j < numSupp; j++) {
+			for (int j = 1; j <= numSupp; j++) {
 
 				// intersect each force cone with each support cone
-				sols = intersectWithSupport2d(myNodes[i].getCone(),
-						mySuppNodes[j]);
-				intersectionNodes[2 * (i + j)] = sols[0];
-				intersectionNodes[2 * (i + j) + 1] = sols[1];
+				sols = intersectWithSupport2d(myNodes[0],
+						myNodes[j]);
+						
+				intersectionNodes[2 * (i + (j-1))] = sols[0];
+				intersectionNodes[2 * (i + (j-1)) + 1] = sols[1];
 
 				// draw connecting lines to the force and support node
-				cline(myNodes[i], sols[0], Color.black, 3);
-				cline(myNodes[i], sols[1], Color.black, 3);
-				cline(mySuppNodes[j], sols[0], Color.black, 3);
-				cline(mySuppNodes[j], sols[1], Color.black, 3);
+				cline(myNodes[0], sols[0], Color.black, 3);
+				cline(myNodes[0], sols[1], Color.black, 3);
+				cline(myNodes[j], sols[0], Color.black, 3);
+				cline(myNodes[j], sols[1], Color.black, 3);
 			}
-		}
+			
 
-		// draw intersection nodes in green
+		}
+		
+		/*// draw intersection nodes in green
 		for (int i = 0; i < numInter; i++) {
 			cpoint(intersectionNodes[i], Color.red, 10);
-		}
-		-----------------------------------------------------------*/
+		}*/
+		
 		/*
 		 * nline(allSols[0],allSols[2]); nline(allSols[0],allSols[3]);
 		 * nline(allSols[1],allSols[3]); nline(allSols[1],allSols[2]);
@@ -210,22 +217,19 @@ public class ForceConesMethod extends PApplet {
 		int scale = 5000;
 		int fillAlpha = 25;
 		int strokeW = 2;
-		int nodeType = n.getType();
-		ForceCone cone = n.getCone();
+		int nodeType = n.getType();		
 		PVector base = n.getPosition();
+		//get cone
+		ForceCone cone = n.getCone();
 		float phi = cone.getAngle();
 		PVector dir1 = cone.getConeDirection2D();	
-
-		// if they are support points
-		if (nodeType == 1) {
-			//dir1.mult(-1);
-			println(dir1);
-		}
-
+		
+		//TODO can't we get this calculation in the ForceCone class??
 		PVector dir2 = new PVector(dir1.x * PApplet.cos(2 * phi) + dir1.y
 				* PApplet.sin(2 * phi), dir1.x * PApplet.sin(-2 * phi) + dir1.y
 				* PApplet.cos(2 * phi));
 
+		
 		strokeWeight(strokeW);
 		stroke(B);
 		fill(B, fillAlpha);
@@ -251,16 +255,20 @@ public class ForceConesMethod extends PApplet {
 
 	// draw the force vector at specified location
 	public void drawVector(Force f, Node n) {
-		// vector to store end coordinated of vector arrow
-		PVector end;
+		// vector to store end coordinated of vector arrow (end)
+		//realDir is to get the real direction of the force (if support, is reverted)
+		//TODO is there a cleaner way to do this? I tried everything and only this seemed to work...
+		PVector realDir, end;
 		PVector dir = f.getDirection();
 		PVector pos = n.getPosition();
 		dir.setMag(f.getMagnitude());
 		// if is support node, invert direction and divide by 2
 		if (n.getType() == 1) {
-			dir.mult(-1);
+			realDir = PVector.mult(dir, -1);
+		}else{
+			realDir = dir;
 		}
-		end = PVector.sub(pos, dir);
+		end = PVector.sub(pos, realDir);
 		// define style
 		strokeWeight(2);
 		stroke(G);
@@ -280,7 +288,10 @@ public class ForceConesMethod extends PApplet {
 	/*
 	 * Intersect force node with support node.
 	 */
-	public Node[] intersectWithSupport2d(ForceCone cone1, SupportNode sn) {
+	public Node[] intersectWithSupport2d(ForceNode forceN, ForceNode supportN) {
+		//get cones
+		ForceCone cone1 = forceN.getCone();
+		
 
 		float phi = cone1.getAngle();
 		PVector base1 = cone1.getBasePoint();
@@ -292,11 +303,11 @@ public class ForceConesMethod extends PApplet {
 				* PApplet.sin(2 * phi), a1.x * PApplet.sin(-2 * phi) + a1.y
 				* PApplet.cos(2 * phi));
 
-		PVector base2 = sn.getPosition();
+		PVector base2 = supportN.getPosition();
 
 		Node[] interNodes = new Node[2];
-		// interNodes[0] = new Node(intersectLines2d(base1, a1, base2, b1));
-		// interNodes[1] = new Node(intersectLines2d(base1, b1, base2, a1));
+		interNodes[0] = new Node(intersectLines2d(base1, a1, base2, b1),2); //type 2 - intersection nodes
+		interNodes[1] = new Node(intersectLines2d(base1, b1, base2, a1),2); //type 2 - intersection nodes
 
 		return interNodes;
 	}
